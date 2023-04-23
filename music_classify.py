@@ -23,7 +23,7 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import ModelCheckpoint
 from datetime import datetime
 from Data_preprocess import preprocess_train_data, preprocess_test_data
-from testing import test
+from testing import test, grid_search
 
 
 def calc_fft(y, sr):
@@ -134,9 +134,13 @@ test_df = pd.read_csv("/Users/amadeus/Downloads/archive/Metadata_Test.csv")
 
 is_process_data = 0
 is_train_model = 1
+_is_test_model = 1
+_is_grid_search = 0
 _is_split = True
 _is_trim = False
 is_print_class_num = True
+model_name = 'CNN_64FC_split_dropout_before_mp_Ver'
+header_name = '64_FC_model.h'
 
 if __name__ == '__main__':
     if is_process_data:
@@ -196,51 +200,84 @@ if __name__ == '__main__':
     if is_train_model:
         model = tf.keras.models.Sequential([
             # First Conv2D layer with 64 filters and a 3x3 kernel size
-            tf.keras.layers.Conv2D(filters=64, kernel_size=(3,3), activation='relu', input_shape=(X_train.shape[1], X_train.shape[2], 1)),
+            tf.keras.layers.Conv2D(filters=16, kernel_size=(3,3), activation='relu', input_shape=(X_train.shape[1], X_train.shape[2], 1)),
             # First max pooling layer with 2x2 pool size
             tf.keras.layers.Dropout(0.5),
             tf.keras.layers.MaxPooling2D(pool_size=(2,2), padding='same'),
             #first dropout
             # Second Conv2D layer with 128 filters and a 3x3 kernel size
-            tf.keras.layers.Conv2D(filters=128, kernel_size=(3,3), activation='relu'),
+            tf.keras.layers.Conv2D(filters=32, kernel_size=(3,3), activation='relu'),
             # Second max pooling layer with 2x2 pool size
             tf.keras.layers.Dropout(0.5),
             tf.keras.layers.MaxPooling2D(pool_size=(2,2), padding='same'),
             # second dropout
             # Third Conv2D layer with 256 filters and a 3x3 kernel size
-            tf.keras.layers.Conv2D(filters=256, kernel_size=(3,3), activation='relu'),
+            tf.keras.layers.Conv2D(filters=64, kernel_size=(3,3), activation='relu'),
             # Third max pooling layer with 3x3 pool size
             tf.keras.layers.Dropout(0.5),
             tf.keras.layers.MaxPooling2D(pool_size=(3,3), padding='same'),
             # 3rd dropout
             # Fourth Conv2D layer with 640 filters and a 3x3 kernel size
-            tf.keras.layers.Conv2D(filters=512, kernel_size=(3,3), activation='relu'),
+            tf.keras.layers.Conv2D(filters=128, kernel_size=(3,3), activation='relu'),
             # Fourth max pooling layer with 3x3 pool size
             tf.keras.layers.Dropout(0.5),
             tf.keras.layers.MaxPooling2D(pool_size=(3,3), padding='same'),
             # Flatten the output of the previous layer
             tf.keras.layers.Flatten(),
             # Fully connected layer with 128 hidden units
-            tf.keras.layers.Dense(units=128, activation='relu'),
+            tf.keras.layers.Dense(units=64, activation='relu'),
             # Output layer with softmax activation function
             tf.keras.layers.Dense(units=num_classes, activation='softmax')
         ])
 
         model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-        checkpointer=ModelCheckpoint(filepath=os.path.join('./music_classification/models', f'CNN_2FC_split_dropout_before_mp_Ver.hdf5'), monitor='val_accuracy', mode='max', save_best_only=True)
+        checkpointer=ModelCheckpoint(filepath=os.path.join('./music_classification/models', f'{model_name}.hdf5'), monitor='val_accuracy', mode='max', save_best_only=True)
         start=datetime.now()
-        history = model.fit(X_train, y_train, batch_size=32, epochs=20, validation_data=(X_test, y_test),callbacks=checkpointer)
+        history = model.fit(X_train, y_train, batch_size=32, epochs=40, validation_data=(X_test, y_test),callbacks=checkpointer)
 
         duration=datetime.now()-start
         print("Training Completed in time: ",duration)
 
         plot_accuracy_loss(history)
-    else:
-        model = tf.keras.models.load_model('./music_classification/models/CNN_2FC_split_dropout_before_mp_Ver.hdf5')
+    model = tf.keras.models.load_model(f'./music_classification/models/{model_name}.hdf5')
+    # Convert the model to the TensorFlow Lite format without quantization
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    tflite_model = converter.convert()
 
-    model = tf.keras.models.load_model('./music_classification/models/CNN_2FC_split_dropout_before_mp_Ver.hdf5')
-    test(X_test, y_test, model, LE)
+    if _is_grid_search:
+        param_grid = {'num_filters': [32, 64],
+                      'kernel_size': [3, 5],
+                      'pool_size1': [2, 3],
+                      'pool_size2': [3, 4],
+                      'dropout_rate': [0.25, 0.5],
+                      'input_shape': [(X_train.shape[1], X_train.shape[2], 1)]}
+
+        grid_search(X_train, y_train, X_test, y_test, param_grid)
+
+
+
+
+    # Save the model to disk
+    open(f"./music_classification/models/{model_name}.tflite", "wb").write(tflite_model)
+
+    basic_model_size = os.path.getsize(f"./music_classification/models/{model_name}.tflite")
+    print("Model is %d bytes" % basic_model_size)
+    a = 'echo "'
+    b = "const unsigned char model[] = { "
+    c = '" '
+    d = f'> ./music_classification/models/{header_name}'
+    cmd1 = a + b + c + d
+    os.system(cmd1)
+    os.system(f'cat ./music_classification/models/{model_name}.tflite | xxd -i      >> ./music_classification/models/{header_name}')
+    a = 'echo "};"                              >> '
+    b = f'./music_classification/models/{header_name}'
+    cmd2 = a + b
+    os.system(cmd2)
+    model_h_size = os.path.getsize(f"./music_classification/models/{header_name}")
+    print(f"Header file, model.h, is {model_h_size:,} bytes.")
+    if _is_test_model:
+        test(X_test, y_test, model, LE)
     # num_pass = 0
     # num_fail = 0
     # min_length = sample_rate
