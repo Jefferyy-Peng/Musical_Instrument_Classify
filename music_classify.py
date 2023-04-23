@@ -132,7 +132,7 @@ tf.random.set_seed(2023)
 train_df = pd.read_csv("/Users/amadeus/Downloads/archive/Metadata_Train.csv")
 test_df = pd.read_csv("/Users/amadeus/Downloads/archive/Metadata_Test.csv")
 
-is_process_data = 1
+is_process_data = 0
 is_train_model = 1
 _is_split = True
 _is_trim = False
@@ -228,7 +228,7 @@ if __name__ == '__main__':
 
         model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-        checkpointer=ModelCheckpoint(filepath=os.path.join('./music_classification/models', f'CNN_2FC_split_dropout_before_mp_Ver.hdf5'), monitor='val_accuracy', verbose=1,save_best_only=True)
+        checkpointer=ModelCheckpoint(filepath=os.path.join('./music_classification/models', f'CNN_2FC_split_dropout_before_mp_Ver.hdf5'), monitor='val_accuracy', mode='max', save_best_only=True)
         start=datetime.now()
         history = model.fit(X_train, y_train, batch_size=32, epochs=20, validation_data=(X_test, y_test),callbacks=checkpointer)
 
@@ -239,6 +239,7 @@ if __name__ == '__main__':
     else:
         model = tf.keras.models.load_model('./music_classification/models/CNN_2FC_split_dropout_before_mp_Ver.hdf5')
 
+    model = tf.keras.models.load_model('./music_classification/models/CNN_2FC_split_dropout_before_mp_Ver.hdf5')
     test(X_test, y_test, model, LE)
     # num_pass = 0
     # num_fail = 0
