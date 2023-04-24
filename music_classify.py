@@ -132,25 +132,25 @@ tf.random.set_seed(2023)
 train_df = pd.read_csv("/Users/amadeus/Downloads/archive/Metadata_Train.csv")
 test_df = pd.read_csv("/Users/amadeus/Downloads/archive/Metadata_Test.csv")
 
-is_process_data = 0
+is_process_data = 1
 is_train_model = 1
 _is_test_model = 1
 _is_grid_search = 0
-_is_split = True
+_is_split = False
 _is_trim = False
 is_print_class_num = True
-model_name = 'CNN_64FC_split_dropout_before_mp_Ver'
-header_name = '64_FC_model.h'
+model_name = 'CNN_2C2F_8C_64F_44pool_dropout_before_mp_Ver'
+header_name = '2C2F_8C_64F_44pool_dropout_before_mp_model.h'
 
 if __name__ == '__main__':
     if is_process_data:
         Train_data_frame = preprocess_train_data(train_df, _is_split=_is_split, _is_trim=_is_trim, verbose=True)
         Test_data_frame = preprocess_test_data(test_df, _is_split=_is_split, _is_trim=_is_trim, verbose=True)
-        pickle.dump(Train_data_frame, open(os.path.join('./music_classification', f'spilt_no_trim_no_overlap_chunk_MFCC.p'), 'wb'))
-        pickle.dump(Test_data_frame, open(os.path.join('./music_classification', f'spilt_no_trim_no_overlap_chunk_MFCC_test.p'), 'wb'))
+        pickle.dump(Train_data_frame, open(os.path.join('./music_classification', f'no_spilt_no_trim_no_overlap_chunk_MFCC.p'), 'wb'))
+        pickle.dump(Test_data_frame, open(os.path.join('./music_classification', f'no_spilt_no_trim_no_overlap_chunk_MFCC_test.p'), 'wb'))
     else:
-        Train_data_frame = pickle.load(open(os.path.join('./music_classification', f'spilt_no_trim_no_overlap_chunk_MFCC.p'), 'rb'))
-        Test_data_frame = pickle.load(open(os.path.join('./music_classification', f'spilt_no_trim_no_overlap_chunk_MFCC_test.p'), 'rb'))
+        Train_data_frame = pickle.load(open(os.path.join('./music_classification', f'no_spilt_no_trim_no_overlap_chunk_MFCC.p'), 'rb'))
+        Test_data_frame = pickle.load(open(os.path.join('./music_classification', f'no_spilt_no_trim_no_overlap_chunk_MFCC_test.p'), 'rb'))
     sample_rate = 22050
 
     if is_print_class_num:
@@ -200,28 +200,28 @@ if __name__ == '__main__':
     if is_train_model:
         model = tf.keras.models.Sequential([
             # First Conv2D layer with 64 filters and a 3x3 kernel size
-            tf.keras.layers.Conv2D(filters=16, kernel_size=(3,3), activation='relu', input_shape=(X_train.shape[1], X_train.shape[2], 1)),
+            tf.keras.layers.Conv2D(filters=8, kernel_size=(3,3), activation='relu', input_shape=(X_train.shape[1], X_train.shape[2], 1)),
             # First max pooling layer with 2x2 pool size
             tf.keras.layers.Dropout(0.5),
-            tf.keras.layers.MaxPooling2D(pool_size=(2,2), padding='same'),
+            tf.keras.layers.MaxPooling2D(pool_size=(4,4), padding='same'),
             #first dropout
             # Second Conv2D layer with 128 filters and a 3x3 kernel size
-            tf.keras.layers.Conv2D(filters=32, kernel_size=(3,3), activation='relu'),
+            tf.keras.layers.Conv2D(filters=16, kernel_size=(3,3), activation='relu'),
             # Second max pooling layer with 2x2 pool size
             tf.keras.layers.Dropout(0.5),
-            tf.keras.layers.MaxPooling2D(pool_size=(2,2), padding='same'),
+            tf.keras.layers.MaxPooling2D(pool_size=(4,4), padding='same'),
             # second dropout
             # Third Conv2D layer with 256 filters and a 3x3 kernel size
-            tf.keras.layers.Conv2D(filters=64, kernel_size=(3,3), activation='relu'),
-            # Third max pooling layer with 3x3 pool size
-            tf.keras.layers.Dropout(0.5),
-            tf.keras.layers.MaxPooling2D(pool_size=(3,3), padding='same'),
+            # tf.keras.layers.Conv2D(filters=64, kernel_size=(3,3), activation='relu'),
+            # # Third max pooling layer with 3x3 pool size
+            # tf.keras.layers.Dropout(0.5),
+            # tf.keras.layers.MaxPooling2D(pool_size=(4,4), padding='same'),
             # 3rd dropout
             # Fourth Conv2D layer with 640 filters and a 3x3 kernel size
-            tf.keras.layers.Conv2D(filters=128, kernel_size=(3,3), activation='relu'),
-            # Fourth max pooling layer with 3x3 pool size
-            tf.keras.layers.Dropout(0.5),
-            tf.keras.layers.MaxPooling2D(pool_size=(3,3), padding='same'),
+            # tf.keras.layers.Conv2D(filters=128, kernel_size=(3,3), activation='relu'),
+            # # Fourth max pooling layer with 3x3 pool size
+            # tf.keras.layers.Dropout(0.5),
+            # tf.keras.layers.MaxPooling2D(pool_size=(3,3), padding='same'),
             # Flatten the output of the previous layer
             tf.keras.layers.Flatten(),
             # Fully connected layer with 128 hidden units
